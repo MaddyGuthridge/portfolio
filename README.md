@@ -42,12 +42,9 @@ To run the production server:
 node -r dotenv/config build
 ```
 
-This requires a `.env` file with the following keys:
-
-```ini
-HOST=127.0.0.1  # the hostname to use
-PORT=5096  # the port number to use
-```
+This requires a `.env` file, which you can create by running
+`cp .env.example .env`. Make sure to edit your `.env` file to set its variables
+as required.
 
 ## Using Docker
 

@@ -14,37 +14,69 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v4
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
     - run: npm ci
-    # Start the server, runs tests, then kill the background job (hopefully)
-    # At the very least, it'll die once the workflow ends
-    - name: npm test
+    # Set up SSH access, as the test suite needs to be able to access git
+    # repos to validate functionality.
+    - name: Decrypt secrets
+      env:
+        PASSWORD: ${{ secrets.SSH_ENCRYPTION_KEY }}
+      run: |
+        gpg --batch --passphrase $PASSWORD --output .github/workflows/secrets/id_ed25519 --decrypt .github/workflows/secrets/id_ed25519.enc
+    - name: Setup SSH agent
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+        ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+        chmod 0600 .github/workflows/secrets/id_ed25519
+        ssh-add .github/workflows/secrets/id_ed25519
+    - name: Set up .env
+      run: cp .env.example .env
+    - name: Run test suite
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh_agent.sock
       run: npm test
+    - name: Show server output
+      if: always()
+      run: cat server.log
+    - name: Cleanup SSH Agent
+      if: always()
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+      run: |
+        ssh-add -D
+        rm -Rf ~/.ssh
+        rm .github/workflows/secrets/id_ed25519
 
   lint:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v4
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
     - run: npm ci
-    - run: npm run lint
+    - name: Run linting
+      run: npm run lint
 
   check:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v4
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
     - run: npm ci
-    - run: npm run check
+    - name: Run type-checking
+      run: npm run check

@@ -1,6 +1,9 @@
 # Data directory
 /data/
 
+# Server logs
+*.log
+
 .DS_Store
 node_modules
 /build
